@@ -11,6 +11,45 @@ function showMoreSets() {
   }
 }
 
+function enableDynamicTooltipAlignment() {
+  document.querySelectorAll('.card-preview').forEach(preview => {
+    const tooltip = preview.querySelector('.card-tooltip');
+    if (!tooltip) return;
+
+    preview.addEventListener('mouseenter', () => {
+      // Reset any manual positioning
+      tooltip.style.left = "";
+      tooltip.style.right = "";
+      tooltip.style.transform = "";
+
+      const rect = tooltip.getBoundingClientRect();
+      const containerRect = preview.getBoundingClientRect();
+      const screenWidth = window.innerWidth;
+
+      const tooltipWidth = rect.width;
+      const cardLeft = containerRect.left;
+      const cardRight = containerRect.right;
+
+      // Too close to left
+      if (cardLeft < tooltipWidth / 2) {
+        tooltip.style.left = "0";
+        tooltip.style.transform = "none";
+      }
+      // Too close to right
+      else if (screenWidth - cardRight < tooltipWidth / 2) {
+        tooltip.style.right = "0";
+        tooltip.style.left = "auto";
+        tooltip.style.transform = "none";
+      }
+      // Centered (default)
+      else {
+        tooltip.style.left = "50%";
+        tooltip.style.transform = "translateX(-50%)";
+      }
+    });
+  });
+}
+
 function searchCard(){
     const cardName = document.getElementById("card-search").value.trim();
     const errorEl = document.getElementById("error-message");
@@ -25,69 +64,98 @@ function searchCard(){
         return;
     }
 
-    const APIURL = `https://db.ygoprodeck.com/api/v7/cardinfo.php?name=${encodeURIComponent(cardName)}`;
+    const APIURL = `https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=${encodeURIComponent(cardName)}`;
 
-    fetch(APIURL)
-    .then(res => res.json())
-    .then(data => {
-        const card = data.data[0];
+fetch(`https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=${encodeURIComponent(cardName)}`)
+  .then(res => res.json())
+  .then(data => {
+    const container = document.getElementById("card-container");
+    container.innerHTML = ""; // Clear previous results
 
-        const setList = card.card_sets || [];
-        const visibleSets = setList.slice(0, 3);
-        const hiddenSets = setList.slice(3);
+    data.data.forEach(card => {
+      const encodedName = encodeURIComponent(card.name);
+      const setList = card.card_sets || [];
+      const visibleSets = setList.slice(0, 3);
+      const hiddenSets = setList.slice(3);
 
-        const setsHTML = `
+      const setsHTML = `
         <h3>Card Sets:</h3>
         <ul class="card-set-list">
-            ${visibleSets.map(set => `
+          ${visibleSets.map(set => `
             <li>${set.set_name} (${set.set_rarity}) - $${set.set_price}</li>
-            `).join("")}
+          `).join("")}
         </ul>
         ${hiddenSets.length > 0 ? `
-            <ul class="card-set-list hidden" id="extra-sets">
+          <ul class="card-set-list hidden" id="extra-sets-${card.id}">
             ${hiddenSets.map(set => `
-                <li>${set.set_name} (${set.set_rarity}) - $${set.set_price}</li>
+              <li>${set.set_name} (${set.set_rarity}) - $${set.set_price}</li>
             `).join("")}
-            </ul>
-            <button class="view-more-btn" id="view-more-btn" onclick="showMoreSets()">View More</button>
+          </ul>
+          <button class="view-more-btn" onclick="document.getElementById('extra-sets-${card.id}').classList.remove('hidden'); this.remove();">View More</button>
         ` : ""}
-        `;
-        const container = document.getElementById("card-container");
+      `;
 
-        container.innerHTML = `
-        <div class="card-detail">
-            <h2 class="card-name">${card.name}</h2>
-            <div class="card-info">
-            <img class="card-image" src="${card.card_images[0].image_url}" alt="${card.name}">
-            <div class="card-meta">
-                <p><strong>Type:</strong> ${card.type}</p>
-                <p><strong>Attribute:</strong> ${card.attribute || "N/A"}</p>
-                <p><strong>Level:</strong> ${card.level || "N/A"}</p>
-                <p><strong>Typing:</strong> ${card.race}</p>
-                <p><strong>ATK/DEF:</strong> ${card.atk}/${card.def}</p>
-                <p><strong>Description:</strong><br>${card.desc}</p>
-            </div>
-            </div>
-            <div class="card-sets">${setsHTML}</div>
-            <div class="card-prices">
-            <h3>Prices:</h3>
-            <ul>
-                <li>Cardmarket: $${card.card_prices[0].cardmarket_price}</li>
-                <li>TCGPlayer: $${card.card_prices[0].tcgplayer_price}</li>
-                <li>eBay: $${card.card_prices[0].ebay_price}</li>
-                <li>Amazon: $${card.card_prices[0].amazon_price}</li>
-                <li>CoolStuffInc: $${card.card_prices[0].coolstuffinc_price}</li>
-            </ul>
-            </div>
+      const isMonster = card.type.includes("Monster");
+
+      const statsHTML = isMonster
+        ? `
+          <p><strong>Attribute:</strong> ${card.attribute || "N/A"}</p>
+          <p><strong>Level:</strong> ${card.level || "N/A"}</p>
+          <p><strong>Typing:</strong> ${card.race || "N/A"}</p>
+          <p><strong>ATK/DEF:</strong> ${card.atk ?? "N/A"} / ${card.def ?? "N/A"}</p>
+        `
+        : `
+          <p><strong>Type:</strong> ${card.type || "N/A"}</p>
+          <p><strong>Typing:</strong> ${card.race || "N/A"}</p>
+        `;
+
+      // Split material from description
+      const fullDesc = card.desc || "";
+      let material = "";
+      let mainDesc = fullDesc;
+
+      const descParts = fullDesc.split('\n');
+      if (descParts.length > 1) {
+        material = descParts[0].trim();
+        mainDesc = descParts.slice(1).join('\n').trim();
+      } else {
+        const match = fullDesc.match(/^"([^"]+)"\s*(.*)/);
+        if (match) {
+          material = match[1];
+          mainDesc = match[2];
+        }
+      }
+
+      if(isMonster){};
+      const tooltipText = `
+        <strong>${card.name}</strong><br>
+        <strong>[
+          ${isMonster ? `${card.type} / ${card.race}` : `${card.race}  ${card.type}`}
+        ]</strong><br>
+        ${isMonster ? `<strong>Attribute:</strong> ${card.attribute}<br><strong>Level:</strong> ${card.level}<br>` : ""}
+        ${material ? `<div class="material">${material}</div>` : ""}
+        <div class="description">${mainDesc}</div>
+      `;
+
+      container.innerHTML += `
+        <div class="card-preview">
+          <a href="card.html?name=${encodedName}" class="card-link">
+            <img class="card-image" src="${card.card_images[0].image_url}" alt="${card.name}" />
+            <div class="card-tooltip">${tooltipText}</div>
+          </a>
         </div>
-        `;
-
-    })
-    .catch(() => {
-        errorEl.textContent = "No such card exists. Please check spelling.";
-        errorEl.style.display = "block";
-    })
+      `;
+    });
+    enableDynamicTooltipAlignment()
+  })
+  .catch(() => {
+    errorEl.textContent = "No such card exists. Please check spelling.";
+    errorEl.style.display = "block";
+  });
 }
+
+
+
 
 
 // Wrap all your listeners inside DOMContentLoaded to ensure elements exist
