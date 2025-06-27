@@ -69,10 +69,28 @@ function searchCard(){
 fetch(`https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=${encodeURIComponent(cardName)}`)
   .then(res => res.json())
   .then(data => {
+    const card = data.data;
+
+    card.sort((a,b) => {
+      const getRank = (card) => {
+        const type = card.type.toLowerCase();
+
+        if(type == "normal monster") return 0;
+        if(type == "effect monster") return 1
+        if(type.includes("monster")) return 2;
+        if(type.includes("spell")) return 3;
+        if(type.includes("trap")) return 4;
+        return 5;
+      };
+
+      return getRank(a) - getRank(b);
+      
+    });
+
     const container = document.getElementById("card-container");
     container.innerHTML = ""; // Clear previous results
 
-    data.data.forEach(card => {
+    card.forEach(card => {
       const encodedName = encodeURIComponent(card.name);
       const setList = card.card_sets || [];
       const visibleSets = setList.slice(0, 3);
@@ -129,9 +147,7 @@ fetch(`https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=${encodeURIComponent(
       if(isMonster){};
       const tooltipText = `
         <strong>${card.name}</strong><br>
-        <strong>[
-          ${isMonster ? `${card.type} / ${card.race}` : `${card.race}  ${card.type}`}
-        ]</strong><br>
+        <strong>[${isMonster ? `${card.type} / ${card.race}` : `${card.race} ${card.type}`}]</strong><br>
         ${isMonster ? `<strong>Attribute:</strong> ${card.attribute}<br><strong>Level:</strong> ${card.level}<br>` : ""}
         ${material ? `<div class="material">${material}</div>` : ""}
         <div class="description">${mainDesc}</div>
@@ -139,8 +155,8 @@ fetch(`https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=${encodeURIComponent(
 
       container.innerHTML += `
         <div class="card-preview">
-          <a href="card.html?name=${encodedName}" class="card-link">
-            <img class="card-image" src="${card.card_images[0].image_url}" alt="${card.name}" />
+          <a href="/card/${encodedName}" class="card-link">
+            <img class="card-image" src="../pic/card-back.png" data-src="${card.card_images[0].image_url}" alt="${card.name}" onload="this.onload=null; this.src=this.getAttribute('data-src');" />
             <div class="card-tooltip">${tooltipText}</div>
           </a>
         </div>

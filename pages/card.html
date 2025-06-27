@@ -63,9 +63,9 @@
       <h1><a href="../index.html">Deck EDitor</a></h1>
       <nav>
         <ul>
-          <li><a href="Decklist.html">Decklist</a></li>
-          <li><a href="Editor.html">Editor</a></li>
-          <li><a href="About.html">About</a></li>
+          <li><a href="../pages/Decklist.html">Decklist</a></li>
+          <li><a href="../pages/Editor.html">Editor</a></li>
+          <li><a href="../pages/About.html">About</a></li>
         </ul>
       </nav>
     </div>
@@ -85,8 +85,8 @@
     }
 
     async function loadCardDetails() {
-      const params = new URLSearchParams(window.location.search);
-      const cardName = params.get("name");
+      const pathParts = window.location.pathname.split('/');
+      const cardName = decodeURIComponent(pathParts[pathParts.length - 1]);
 
       if (!cardName) {
         document.getElementById("card-container").textContent = "No card name provided.";
