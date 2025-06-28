@@ -26,7 +26,7 @@
             <nav>
                 <ul>
                     <li><a href="Decklist.html">Decklist</a></li>
-                    <li><a href="Editor.html">Editor</a></li>
+                    <li><a href="Database.html">Database</a></li>
                     <li><a href="About.html">About</a></li>
                 </ul>
             </nav>
@@ -35,11 +35,22 @@
 
     <div id="search-container">
         <input type="text" id="card-search" placeholder="Enter card name..." />
-        <button onclick="searchCard()">Search</button>
+        <button id="search-btn" onclick="searchCard()">Search</button>
         <p id="error-message" style="color: red; margin-top: 8px; display: none;"></p>
     </div>
 
-    <section id="card-container"></section>
+    <div id="pagination" class="pagination-controls"></div>
+    
+
+    <div id="card-container"></div>
+
+    <script>
+    window.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("search-btn").click();
+    });
+    </script>
+
+
     
 </body>
 </html>

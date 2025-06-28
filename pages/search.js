@@ -1,6 +1,3 @@
-
-
-
 function showMoreSets() {
   const extraSets = document.getElementById("extra-sets");
   const btn = document.getElementById("view-more-btn");
@@ -10,6 +7,7 @@ function showMoreSets() {
     btn.style.display = "none";            // Hide the button after one click
   }
 }
+
 
 function enableDynamicTooltipAlignment() {
   document.querySelectorAll('.card-preview').forEach(preview => {
@@ -50,127 +48,169 @@ function enableDynamicTooltipAlignment() {
   });
 }
 
-function searchCard(){
-    const cardName = document.getElementById("card-search").value.trim();
-    const errorEl = document.getElementById("error-message");
-    const container = document.getElementById("card-container");
 
-    errorEl.style.display = "none";  // hide previous error
-    container.innerHTML = "";
+let allChunks = [];
+let currentPage = 1;
 
-    if(!cardName){
-        errorEl.textContent = "Please enter a card name.";
-        errorEl.style.display = "block";
-        return;
+async function searchCard() {
+  const input = document.getElementById("card-search").value.trim().toLowerCase();
+  const container = document.getElementById("card-container");
+  const errorEl = document.getElementById("error-message");
+  const paginationEl = document.getElementById("pagination");
+
+  container.innerHTML = "Loading...";
+  errorEl.style.display = "none";
+  paginationEl.innerHTML = "";
+
+  try {
+    const response = await fetch("https://db.ygoprodeck.com/api/v7/cardinfo.php");
+    const data = await response.json();
+
+    const filtered = data.data.filter(card =>
+      card.name.toLowerCase().includes(input) ||
+      card.desc?.toLowerCase().includes(input)
+    );
+
+    if (filtered.length === 0) {
+      container.innerHTML = "";
+      errorEl.textContent = "No results found.";
+      errorEl.style.display = "block";
+      return;
     }
 
-    const APIURL = `https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=${encodeURIComponent(cardName)}`;
-
-fetch(`https://db.ygoprodeck.com/api/v7/cardinfo.php?fname=${encodeURIComponent(cardName)}`)
-  .then(res => res.json())
-  .then(data => {
-    const card = data.data;
-
-    card.sort((a,b) => {
-      const getRank = (card) => {
-        const type = card.type.toLowerCase();
-
-        if(type == "normal monster") return 0;
-        if(type == "effect monster") return 1
-        if(type.includes("monster")) return 2;
-        if(type.includes("spell")) return 3;
-        if(type.includes("trap")) return 4;
-        return 5;
+    // Sort cards (normal -> effect -> other monsters -> spell -> trap)
+    const sorted = filtered.sort((a, b) => {
+      const order = {
+        "Normal Monster": 0,
+        "Effect Monster": 1,
+        "Fusion Monster": 2,
+        "Synchro Monster": 3,
+        "XYZ Monster": 4,
+        "Link Monster": 5,
+        "Spell Card": 6,
+        "Trap Card": 7
       };
-
-      return getRank(a) - getRank(b);
-      
+      return (order[a.type] ?? 99) - (order[b.type] ?? 99);
     });
 
-    const container = document.getElementById("card-container");
-    container.innerHTML = ""; // Clear previous results
+    // Split into pages of 20
+    allChunks = [];
+    for (let i = 0; i < sorted.length; i += 35) {
+      allChunks.push(sorted.slice(i, i + 35));
+    }
 
-    card.forEach(card => {
-      const encodedName = encodeURIComponent(card.name);
-      const setList = card.card_sets || [];
-      const visibleSets = setList.slice(0, 3);
-      const hiddenSets = setList.slice(3);
-
-      const setsHTML = `
-        <h3>Card Sets:</h3>
-        <ul class="card-set-list">
-          ${visibleSets.map(set => `
-            <li>${set.set_name} (${set.set_rarity}) - $${set.set_price}</li>
-          `).join("")}
-        </ul>
-        ${hiddenSets.length > 0 ? `
-          <ul class="card-set-list hidden" id="extra-sets-${card.id}">
-            ${hiddenSets.map(set => `
-              <li>${set.set_name} (${set.set_rarity}) - $${set.set_price}</li>
-            `).join("")}
-          </ul>
-          <button class="view-more-btn" onclick="document.getElementById('extra-sets-${card.id}').classList.remove('hidden'); this.remove();">View More</button>
-        ` : ""}
-      `;
-
-      const isMonster = card.type.includes("Monster");
-
-      const statsHTML = isMonster
-        ? `
-          <p><strong>Attribute:</strong> ${card.attribute || "N/A"}</p>
-          <p><strong>Level:</strong> ${card.level || "N/A"}</p>
-          <p><strong>Typing:</strong> ${card.race || "N/A"}</p>
-          <p><strong>ATK/DEF:</strong> ${card.atk ?? "N/A"} / ${card.def ?? "N/A"}</p>
-        `
-        : `
-          <p><strong>Type:</strong> ${card.type || "N/A"}</p>
-          <p><strong>Typing:</strong> ${card.race || "N/A"}</p>
-        `;
-
-      // Split material from description
-      const fullDesc = card.desc || "";
-      let material = "";
-      let mainDesc = fullDesc;
-
-      const descParts = fullDesc.split('\n');
-      if (descParts.length > 1) {
-        material = descParts[0].trim();
-        mainDesc = descParts.slice(1).join('\n').trim();
-      } else {
-        const match = fullDesc.match(/^"([^"]+)"\s*(.*)/);
-        if (match) {
-          material = match[1];
-          mainDesc = match[2];
-        }
-      }
-
-      if(isMonster){};
-      const tooltipText = `
-        <strong>${card.name}</strong><br>
-        <strong>[${isMonster ? `${card.type} / ${card.race}` : `${card.race} ${card.type}`}]</strong><br>
-        ${isMonster ? `<strong>Attribute:</strong> ${card.attribute}<br><strong>Level:</strong> ${card.level}<br>` : ""}
-        ${material ? `<div class="material">${material}</div>` : ""}
-        <div class="description">${mainDesc}</div>
-      `;
-
-      container.innerHTML += `
-        <div class="card-preview">
-          <a href="/card/${encodedName}" class="card-link">
-            <img class="card-image" src="../pic/card-back.png" data-src="${card.card_images[0].image_url}" alt="${card.name}" onload="this.onload=null; this.src=this.getAttribute('data-src');" />
-            <div class="card-tooltip">${tooltipText}</div>
-          </a>
-        </div>
-      `;
-    });
-    enableDynamicTooltipAlignment()
-  })
-  .catch(() => {
-    errorEl.textContent = "No such card exists. Please check spelling.";
+    currentPage = 1;
+    renderPage(currentPage);
+    renderPagination();
+  } catch (err) {
+    container.innerHTML = "";
+    errorEl.textContent = "Failed to load cards.";
     errorEl.style.display = "block";
+  }
+}
+
+
+function renderPage(page) {
+  const container = document.getElementById("card-container");
+  container.innerHTML = "";
+
+  const cards = allChunks[page - 1];
+  cards.forEach(card => {
+    const encodedName = encodeURIComponent(card.name);
+    const isMonster = card.type.includes("Monster");
+    const attribute = card.attribute || "N/A";
+    const level = card.level !== undefined ? card.level : "N/A";
+
+    let material = "";
+    let mainDesc = card.desc || "";
+
+    const descParts = mainDesc.split('\n');
+    if (descParts.length > 1) {
+      material = descParts[0].trim();
+      mainDesc = descParts.slice(1).join('\n').trim();
+    } else {
+      const match = mainDesc.match(/^"([^"]+)"\s*(.*)/);
+      if (match) {
+        material = match[1];
+        mainDesc = match[2];
+      }
+    }
+
+    const typeDisplay = isMonster
+      ? `[${card.type}/${card.race}]`
+      : `[${card.race}/${card.type}]`;
+
+    const tooltipText = `
+      <strong style="font-size: 1.1rem;">${card.name}</strong><br>
+      <strong>${typeDisplay}</strong><br>
+      ${isMonster ? `<strong>Attribute:</strong> ${attribute}<br><strong>Level:</strong> ${level}<br>` : ""}
+      ${material ? `<div class="material">${material}</div>` : ""}
+      <div class="description" style="font-size: 0.95rem;">${mainDesc}</div>
+    `;
+
+    const cardEl = document.createElement("div");
+    cardEl.className = "card-preview";
+
+    const cardback = "../pic/card-back.png";
+    cardEl.innerHTML = `
+      <a href="/card/${encodedName}" class="card-link">
+        <img
+        class="card-image"
+        src="${cardback}"
+        data-src="${card.card_images[0].image_url_small}"
+        alt="${card.name}"
+        onload="this.src=this.dataset.src"
+        onerror="this.src='${cardback}'"
+      />
+        <div class="card-tooltip">${tooltipText}</div>
+      </a>
+    `;
+    container.appendChild(cardEl);
   });
 }
 
 
+function renderPagination() {
+  const paginationEl = document.getElementById("pagination");
+  paginationEl.innerHTML = "";
+
+  // Create Left Arrow Button
+  const prevBtn = document.createElement("button");
+  prevBtn.textContent = "<";
+  prevBtn.disabled = currentPage === 1;
+  prevBtn.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      renderPage(currentPage);
+      renderPagination();
+      window.scrollTo(0, 0);
+    }
+  });
+  paginationEl.appendChild(prevBtn);
+
+  // Page Indicator
+  const pageIndicator = document.createElement("span");
+  pageIndicator.textContent = `${currentPage}/${allChunks.length}`;
+  pageIndicator.style.color = "#fff";
+  pageIndicator.style.margin = "0 12px";
+  pageIndicator.style.fontWeight = "bold";
+  pageIndicator.style.fontSize = "1.1rem";
+  paginationEl.appendChild(pageIndicator);
+
+  // Create Right Arrow Button
+  const nextBtn = document.createElement("button");
+  nextBtn.textContent = ">";
+  nextBtn.disabled = currentPage === allChunks.length;
+  nextBtn.addEventListener("click", () => {
+    if (currentPage < allChunks.length) {
+      currentPage++;
+      renderPage(currentPage);
+      renderPagination();
+      window.scrollTo(0, 0);
+    }
+  });
+  paginationEl.appendChild(nextBtn);
+}
 
 
 
