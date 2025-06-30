@@ -1,0 +1,9 @@
+-Fix styling for different pages
+-Decklist page require to be signed in
+-Show if signed in or not.
+-Profile information
+    -Edit profile (optional)
+-Logout function
+
+
+-Game interpreter (Low priority)

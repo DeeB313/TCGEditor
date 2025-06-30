@@ -1,22 +1,68 @@
-const express = require('express');
-const path = require('path');
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import bodyParser from 'body-parser';
+import db from './database.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 
-// Serve static files (your CSS, JS, images, etc.)
+// Serve static files from the root directory (where index.html lives)
 app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, 'pages', 'templates')));
+app.use(express.static(path.join(__dirname, 'pages')));
 
-// Route for dynamic card pages
+// Middleware to parse form data
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+
+//app.get('/test', (req, res) => {
+//  res.send('Server is working!');
+//});
+
 app.get('/card/:name', (req, res) => {
-  res.sendFile(path.join(__dirname, 'pages', 'card.html'));
+  res.sendFile(path.join(__dirname, 'pages', 'templates', 'card.html'));
 });
 
-// Optionally: fallback to index.html for other SPA routes
-// app.get('*', (req, res) => {
-//   res.sendFile(path.join(__dirname, 'index.html'));
-// });
+// Serve the sign-in page
+app.get('/signin', (req, res) => {
+  res.sendFile(path.join(__dirname, 'pages', 'templates', 'signin.html'));
+});
 
-const PORT = process.env.PORT || 3000;
+
+// Handle login POST request
+app.post('/signin', (req, res) => {
+  const { username, password } = req.body;
+
+  console.log('Signin attempt:', { username, password });
+
+  if (!username || !password) {
+    return res.status(400).send('Username and password required');
+  }
+
+  db.query(
+    'SELECT * FROM users WHERE Username = ? AND Password = ?',
+    [username, password],
+    (err, results) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).send('Database error.');
+      }
+
+      console.log('DB results:', results);
+
+      if (results.length > 0) {
+        res.send('Login successful!');
+      } else {
+        res.status(401).send('Invalid username or password');
+      }
+    }
+  );
+});
+
+const PORT = 3000;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
-    

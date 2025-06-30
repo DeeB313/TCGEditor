@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="styles.css">
+    <title>Deck EDitor</title>
+    <style>
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            padding: 1rem;
+        }
+        .card-grid img {
+            width: 100%;
+            max-width: 150px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<script src="../search.js"></script>
+<body>
+    <header>
+        <div class="navigation">
+            <h1><a href="../../index.html">Deck EDitor</a></h1>
+            <nav>
+                <ul>
+                    <li><a href="Decklist.html">Decklist</a></li>
+                    <li><a href="Database.html">Database</a></li>
+                    <li><a href="About.html">About</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div id="search-container">
+        <input type="text" id="card-search" placeholder="Enter card name..." />
+        <button id="search-btn" onclick="searchCard()">Search</button>
+        <p id="error-message" style="color: red; margin-top: 8px; display: none;"></p>
+    </div>
+
+    <div id="pagination" class="pagination-controls"></div>
+    
+
+    <div id="card-container"></div>
+
+    <script>
+    window.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("search-btn").click();
+    });
+    </script>
+
+
+    
+</body>
+</html>

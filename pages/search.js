@@ -151,7 +151,7 @@ function renderPage(page) {
     const cardEl = document.createElement("div");
     cardEl.className = "card-preview";
 
-    const cardback = "../pic/card-back.png";
+    const cardback = "../../pic/card-back.png";
     cardEl.innerHTML = `
       <a href="/card/${encodedName}" class="card-link">
         <img
